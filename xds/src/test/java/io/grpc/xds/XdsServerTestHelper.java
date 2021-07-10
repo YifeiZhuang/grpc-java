@@ -231,12 +231,12 @@ public class XdsServerTestHelper {
     }
 
     @Override
-    void watchRdsResource(String resourceName, RdsResourceWatcher watcher) {
+    synchronized void watchRdsResource(String resourceName, RdsResourceWatcher watcher) {
       rdsResources.put(resourceName, watcher);
     }
 
     @Override
-    void cancelRdsResourceWatch(String resourceName, RdsResourceWatcher watcher) {
+    synchronized void cancelRdsResourceWatch(String resourceName, RdsResourceWatcher watcher) {
       rdsResources.remove(resourceName);
     }
 
@@ -259,7 +259,7 @@ public class XdsServerTestHelper {
       ldsWatcher.onChanged(ldsUpdate);
     }
 
-    void deliverRdsUpdate(String rdsName, List<VirtualHost> virtualHosts) {
+    synchronized void deliverRdsUpdate(String rdsName, List<VirtualHost> virtualHosts) {
       rdsResources.get(rdsName).onChanged(new RdsUpdate(virtualHosts));
     }
   }
