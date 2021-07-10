@@ -219,10 +219,10 @@ public class XdsServerTestHelper {
     @Override
     void watchLdsResource(String resourceName, LdsResourceWatcher watcher) {
       assertThat(ldsWatcher).isNull();
-      ldsResource.set(resourceName);
       ldsWatcher = watcher;
       assertThat(ldsWatcher).isNotNull();
       System.out.println("watched lds resource");
+      ldsResource.set(resourceName);
     }
 
     @Override
