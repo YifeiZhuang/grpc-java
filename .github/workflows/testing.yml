@@ -5,6 +5,7 @@ on:
     branches:
     - master
     - 'v1.*'
+    - 'zivy/fix-action'
   pull_request:
   schedule:
   - cron: '54 19 * * SUN' # weekly at a "random" time
