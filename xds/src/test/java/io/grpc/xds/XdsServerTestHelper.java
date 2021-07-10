@@ -204,7 +204,7 @@ public class XdsServerTestHelper {
     boolean shutdown;
     SettableFuture<String> ldsResource = SettableFuture.create();
     LdsResourceWatcher ldsWatcher;
-    Map<String, RdsResourceWatcher> rdsResources = new ConcurrentHashMap<>();
+    ConcurrentHashMap<String, RdsResourceWatcher> rdsResources = new ConcurrentHashMap<>();
 
     @Override
     public TlsContextManager getTlsContextManager() {
