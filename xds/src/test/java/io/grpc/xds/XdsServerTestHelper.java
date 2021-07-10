@@ -221,6 +221,8 @@ public class XdsServerTestHelper {
       assertThat(ldsWatcher).isNull();
       ldsResource.set(resourceName);
       ldsWatcher = watcher;
+      assertThat(ldsWatcher).isNotNull();
+      System.out.println("watched lds resource");
     }
 
     @Override
@@ -251,11 +253,13 @@ public class XdsServerTestHelper {
     }
 
     void deliverLdsUpdate(List<FilterChain> filterChains, FilterChain defaultFilterChain) {
+      System.out.println("is null? " + (ldsWatcher == null));
       ldsWatcher.onChanged(LdsUpdate.forTcpListener(new Listener(
               "listener", "0.0.0.0:1", filterChains, defaultFilterChain)));
     }
 
     void deliverLdsUpdate(LdsUpdate ldsUpdate) {
+      System.out.println("is null? " + (ldsWatcher == null));
       ldsWatcher.onChanged(ldsUpdate);
     }
 
