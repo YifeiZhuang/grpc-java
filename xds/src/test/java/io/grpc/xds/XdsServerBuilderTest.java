@@ -133,7 +133,6 @@ public class XdsServerBuilderTest {
       }
     });
     xdsClient.ldsResource.get(5000, TimeUnit.MILLISECONDS);
-    System.out.println("resource: " + xdsClient.ldsResource.get());
     return settableFuture;
   }
 

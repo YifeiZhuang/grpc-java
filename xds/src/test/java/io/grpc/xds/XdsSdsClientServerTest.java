@@ -462,7 +462,7 @@ public class XdsSdsClientServerTest {
         }
       }
     });
-    System.out.println("watched resource" + xdsClient.ldsResource.get(8000, TimeUnit.MILLISECONDS));
+    xdsClient.ldsResource.get(8000, TimeUnit.MILLISECONDS);
     return settableFuture;
   }
 

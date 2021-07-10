@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.SettableFuture;
 import io.grpc.Attributes;
 import io.grpc.Metadata;
@@ -203,12 +204,14 @@ public class XdsServerWrapperTest {
     assertThat(selectorRef.get()).isNull();
     verify(mockServer, never()).start();
     verify(listener, never()).onServing();
+    assertThat(xdsClient.rdsResources.keySet()).isEqualTo(ImmutableSet.of("r0"));
 
     EnvoyServerProtoData.FilterChain f2 = createFilterChain("filter-chain-2", createRds("r1"));
     EnvoyServerProtoData.FilterChain f3 = createFilterChain("filter-chain-3", createRds("r2"));
     xdsClient.deliverLdsUpdate(Arrays.asList(f0, f2), f3);
     verify(mockServer, never()).start();
     verify(listener, never()).onServing();
+    assertThat(xdsClient.rdsResources.keySet()).isEqualTo(ImmutableSet.of("r1", "r2"));
 
     xdsClient.deliverRdsUpdate("r1",
             Collections.singletonList(createVirtualHost("virtual-host-1")));
