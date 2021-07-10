@@ -225,7 +225,7 @@ public class XdsServerTestHelper {
 
     @Override
     void cancelLdsResourceWatch(String resourceName, LdsResourceWatcher watcher) {
-      assertThat(ldsResource.isDone()).isTrue();
+      assertThat(ldsWatcher).isNotNull();
       ldsResource = null;
       ldsWatcher = null;
     }

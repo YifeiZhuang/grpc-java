@@ -199,11 +199,12 @@ public class XdsServerWrapperTest {
             0L, Collections.singletonList(virtualHost), new ArrayList<NamedFilterConfig>());
     EnvoyServerProtoData.FilterChain f0 = createFilterChain("filter-chain-0", hcm_virtual);
     EnvoyServerProtoData.FilterChain f1 = createFilterChain("filter-chain-1", createRds("r0"));
-
     xdsClient.deliverLdsUpdate(Arrays.asList(f0, f1), null);
+    assertThat(start.isDone()).isFalse();
     assertThat(selectorRef.get()).isNull();
     verify(mockServer, never()).start();
-    assertThat(xdsClient.rdsResources.keySet()).isEqualTo(ImmutableSet.of("r0"));
+    verify(listener, never()).onServing();
+    assertThat(xdsClient.rdsResources.get("r0")).isNotNull();
 
     EnvoyServerProtoData.FilterChain f2 = createFilterChain("filter-chain-2", createRds("r1"));
     EnvoyServerProtoData.FilterChain f3 = createFilterChain("filter-chain-3", createRds("r2"));
@@ -251,7 +252,6 @@ public class XdsServerWrapperTest {
     FilterChain filterChain = createFilterChain("filter-chain-0", createRds("rds"));
     SslContextProviderSupplier sslSupplier = filterChain.getSslContextProviderSupplier();
     xdsClient.deliverLdsUpdate(Collections.singletonList(filterChain), null);
-    System.out.println("current threadf " + Thread.currentThread());
     xdsClient.rdsResources.get("rds").onResourceDoesNotExist("rds");
     assertThat(selectorRef.get()).isSameInstanceAs(FilterChainSelector.NO_FILTER_CHAIN);
     assertThat(xdsClient.rdsResources).isEmpty();
