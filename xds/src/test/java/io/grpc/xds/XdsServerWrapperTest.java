@@ -203,14 +203,10 @@ public class XdsServerWrapperTest {
     assertThat(selectorRef.get()).isNull();
     verify(mockServer, never()).start();
     verify(listener, never()).onServing();
-    assertThat(xdsClient.rdsResources.get("r0")).isNotNull();
 
     EnvoyServerProtoData.FilterChain f2 = createFilterChain("filter-chain-2", createRds("r1"));
     EnvoyServerProtoData.FilterChain f3 = createFilterChain("filter-chain-3", createRds("r2"));
     xdsClient.deliverLdsUpdate(Arrays.asList(f0, f2), f3);
-    assertThat(xdsClient.rdsResources.get("r1")).isNotNull();
-    assertThat(xdsClient.rdsResources.get("r2")).isNotNull();
-    assertThat(xdsClient.rdsResources.size()).isEqualTo(2);
     verify(mockServer, never()).start();
     verify(listener, never()).onServing();
 
@@ -219,6 +215,7 @@ public class XdsServerWrapperTest {
     verify(mockServer, never()).start();
     xdsClient.deliverRdsUpdate("r2",
             Collections.singletonList(createVirtualHost("virtual-host-2")));
+    start.get(5000, TimeUnit.MILLISECONDS);
     verify(mockServer).start();
     assertThat(selectorRef.get().getRoutingConfigs()).isEqualTo(ImmutableMap.of(
         f0, ServerRoutingConfig.create(hcm_virtual.httpFilterConfigs(), hcm_virtual.virtualHosts()),
