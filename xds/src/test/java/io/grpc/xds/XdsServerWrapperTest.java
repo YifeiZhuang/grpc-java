@@ -156,6 +156,7 @@ public class XdsServerWrapperTest {
       }
     });
     String ldsWatched = xdsClient.ldsResource.get(5, TimeUnit.SECONDS);
+    assertThat(ldsWatched).isEqualTo("grpc/server?udpa.resource.listening_address=0.0.0.0:1");
     VirtualHost virtualHost =
             VirtualHost.create(
                     "virtual-host", Collections.singletonList("auth"), new ArrayList<Route>(),
@@ -247,6 +248,7 @@ public class XdsServerWrapperTest {
     FilterChain filterChain = createFilterChain("filter-chain-0", createRds("rds"));
     SslContextProviderSupplier sslSupplier = filterChain.getSslContextProviderSupplier();
     xdsClient.deliverLdsUpdate(Collections.singletonList(filterChain), null);
+    System.out.println("current threadf " + Thread.currentThread());
     xdsClient.rdsResources.get("rds").onResourceDoesNotExist("rds");
     assertThat(selectorRef.get()).isSameInstanceAs(FilterChainSelector.NO_FILTER_CHAIN);
     assertThat(xdsClient.rdsResources).isEmpty();

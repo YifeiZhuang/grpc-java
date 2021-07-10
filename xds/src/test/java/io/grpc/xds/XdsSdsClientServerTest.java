@@ -369,7 +369,7 @@ public class XdsSdsClientServerTest {
     XdsServerWrapper xdsServer = builder.build();
     SettableFuture<Throwable> startFuture = startServerAsync(xdsServer);
     EnvoyServerProtoData.Listener listener = buildListener("listener1", "10.1.2.3",
-            downstreamTlsContext,  tlsContextManagerForServer);
+            downstreamTlsContext, tlsContextManagerForServer);
     LdsUpdate listenerUpdate = LdsUpdate.forTcpListener(listener);
     xdsClient.deliverLdsUpdate(listenerUpdate);
     startFuture.get(10, TimeUnit.SECONDS);
@@ -462,7 +462,7 @@ public class XdsSdsClientServerTest {
         }
       }
     });
-    xdsClient.ldsResource.get(1000, TimeUnit.MILLISECONDS);
+    System.out.println("watched resource" + xdsClient.ldsResource.get(8000, TimeUnit.MILLISECONDS));
     return settableFuture;
   }
 

@@ -234,11 +234,13 @@ public class XdsServerTestHelper {
 
     @Override
     void watchRdsResource(String resourceName, RdsResourceWatcher watcher) {
+      System.out.println("watching rds " + resourceName);
       rdsResources.put(resourceName, watcher);
     }
 
     @Override
     void cancelRdsResourceWatch(String resourceName, RdsResourceWatcher watcher) {
+      System.out.println("cancelling rds " + resourceName + Thread.currentThread());
       rdsResources.remove(resourceName);
     }
 
