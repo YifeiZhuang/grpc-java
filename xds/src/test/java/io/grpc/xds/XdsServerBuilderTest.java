@@ -197,7 +197,7 @@ public class XdsServerBuilderTest {
     verify(mockXdsServingStatusListener, never()).onNotServing(any(StatusException.class));
     reset(mockXdsServingStatusListener);
     xdsClient.ldsWatcher.onResourceDoesNotExist("not found error");
-    assertThat(future.isDone()).isTrue();
+    future.get(5000, TimeUnit.MILLISECONDS);
     verify(mockXdsServingStatusListener).onNotServing(any(StatusException.class));
     reset(mockXdsServingStatusListener);
     XdsServerTestHelper.generateListenerUpdate(

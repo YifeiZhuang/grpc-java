@@ -151,7 +151,6 @@ task checkPackageLeakage(dependsOn: shadowJar) {
 
 test {
     dependsOn checkPackageLeakage
-    testLogging.showStandardStreams(true)
 }
 
 jacocoTestReport {
