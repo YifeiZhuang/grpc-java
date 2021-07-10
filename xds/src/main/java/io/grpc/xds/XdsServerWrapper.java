@@ -433,6 +433,7 @@ public final class XdsServerWrapper extends Server {
           listener.onNotServing(
               Status.UNAVAILABLE.withDescription(
                   "Listener " + resourceName + " unavailable").asException());
+          logger.log(Level.INFO, "on not serving ");
         }
       });
     }
