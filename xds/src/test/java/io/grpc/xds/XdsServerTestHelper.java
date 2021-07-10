@@ -203,7 +203,7 @@ public class XdsServerTestHelper {
   static final class FakeXdsClient extends XdsClient {
     boolean shutdown;
     SettableFuture<String> ldsResource = SettableFuture.create();
-    volatile LdsResourceWatcher ldsWatcher;
+    LdsResourceWatcher ldsWatcher;
     Map<String, RdsResourceWatcher> rdsResources = new ConcurrentHashMap<>();
 
     @Override
@@ -220,8 +220,6 @@ public class XdsServerTestHelper {
     void watchLdsResource(String resourceName, LdsResourceWatcher watcher) {
       assertThat(ldsWatcher).isNull();
       ldsWatcher = watcher;
-      assertThat(ldsWatcher).isNotNull();
-      System.out.println("watched lds resource");
       ldsResource.set(resourceName);
     }
 
@@ -234,13 +232,11 @@ public class XdsServerTestHelper {
 
     @Override
     void watchRdsResource(String resourceName, RdsResourceWatcher watcher) {
-      System.out.println("watching rds " + resourceName);
       rdsResources.put(resourceName, watcher);
     }
 
     @Override
     void cancelRdsResourceWatch(String resourceName, RdsResourceWatcher watcher) {
-      System.out.println("cancelling rds " + resourceName + Thread.currentThread());
       rdsResources.remove(resourceName);
     }
 
@@ -255,13 +251,11 @@ public class XdsServerTestHelper {
     }
 
     void deliverLdsUpdate(List<FilterChain> filterChains, FilterChain defaultFilterChain) {
-      System.out.println("is null? " + (ldsWatcher == null));
       ldsWatcher.onChanged(LdsUpdate.forTcpListener(new Listener(
               "listener", "0.0.0.0:1", filterChains, defaultFilterChain)));
     }
 
     void deliverLdsUpdate(LdsUpdate ldsUpdate) {
-      System.out.println("is null? " + (ldsWatcher == null));
       ldsWatcher.onChanged(ldsUpdate);
     }
 

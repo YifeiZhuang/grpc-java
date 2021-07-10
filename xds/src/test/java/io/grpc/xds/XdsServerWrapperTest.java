@@ -128,6 +128,7 @@ public class XdsServerWrapperTest {
     EnvoyServerProtoData.FilterChain f0 = createFilterChain("filter-chain-0", hcm_virtual);
     SslContextProviderSupplier sslSupplier = f0.getSslContextProviderSupplier();
     xdsClient.deliverLdsUpdate(Collections.singletonList(f0), null);
+    start.get(5000, TimeUnit.MILLISECONDS);
     verify(mockServer).start();
     xdsServerWrapper.shutdown();
     assertThat(xdsServerWrapper.isShutdown()).isTrue();
@@ -167,6 +168,7 @@ public class XdsServerWrapperTest {
             "filter-chain-foo", createMatch(), httpConnectionManager, createTls(),
             tlsContextManager);
     xdsClient.deliverLdsUpdate(Collections.singletonList(filterChain), null);
+    start.get(5000, TimeUnit.MILLISECONDS);
     FilterChainSelector selector = selectorRef.get();
     assertThat(ldsWatched).isEqualTo("grpc/server?udpa.resource.listening_address=0.0.0.0:1");
     assertThat(selector.getRoutingConfigs()).isEqualTo(ImmutableMap.of(
@@ -243,6 +245,7 @@ public class XdsServerWrapperTest {
     });
     String ldsResource = xdsClient.ldsResource.get(5, TimeUnit.SECONDS);
     xdsClient.ldsWatcher.onResourceDoesNotExist(ldsResource);
+    start.get(5000, TimeUnit.MILLISECONDS);
     verify(listener, times(1)).onNotServing(any(StatusException.class));
     verify(mockBuilder, never()).build();
     FilterChain filterChain = createFilterChain("filter-chain-0", createRds("rds"));
