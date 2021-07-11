@@ -364,6 +364,7 @@ public final class XdsServerWrapper extends Server {
 
     @Override
     public void onChanged(final LdsUpdate update) {
+      logger.log(Level.INFO, "lds on change");
       syncContext.execute(new Runnable() {
         @Override
         public void run() {
@@ -374,6 +375,7 @@ public final class XdsServerWrapper extends Server {
             // Ignore updates not for servers.
             return;
           }
+          logger.log(Level.INFO, "listening to lds");
           inflight = true;
           filterChains = new HashMap<>();
           for (FilterChain filterChain: update.listener().getFilterChains()) {
@@ -408,7 +410,9 @@ public final class XdsServerWrapper extends Server {
               xdsClient.cancelRdsResourceWatch(rdsName, routeDiscoveryStates.get(rdsName));
             }
           }
+          logger.log(Level.INFO, "key set " + routeDiscoveryStates.keySet());
           routeDiscoveryStates.keySet().retainAll(currentRdsResources);
+          logger.log(Level.INFO, "key set " + routeDiscoveryStates.keySet());
           if (defaultFilterChain != null) {
             defaultRoutingConfig = routingConfigs.get(defaultFilterChain.getName());
           } else {
@@ -418,6 +422,7 @@ public final class XdsServerWrapper extends Server {
           maybeUpdateSelector();
         }
       });
+      syncContext.drain();
     }
 
     @Override

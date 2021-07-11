@@ -41,6 +41,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.annotation.Nullable;
 import org.mockito.ArgumentCaptor;
 
@@ -48,6 +50,7 @@ import org.mockito.ArgumentCaptor;
  * Helper methods related to {@link XdsServerBuilder} and related classes.
  */
 public class XdsServerTestHelper {
+  private static final Logger log = Logger.getLogger(XdsServerTestHelper.class.getName());
 
   private static final String SERVER_URI = "trafficdirector.googleapis.com";
   private static final String NODE_ID =
@@ -250,17 +253,18 @@ public class XdsServerTestHelper {
       return shutdown;
     }
 
-    synchronized void deliverLdsUpdate(List<FilterChain> filterChains,
+    void deliverLdsUpdate(List<FilterChain> filterChains,
                                        FilterChain defaultFilterChain) {
       ldsWatcher.onChanged(LdsUpdate.forTcpListener(new Listener(
               "listener", "0.0.0.0:1", filterChains, defaultFilterChain)));
     }
 
-    synchronized void deliverLdsUpdate(LdsUpdate ldsUpdate) {
+    void deliverLdsUpdate(LdsUpdate ldsUpdate) {
       ldsWatcher.onChanged(ldsUpdate);
     }
 
-    synchronized void deliverRdsUpdate(String rdsName, List<VirtualHost> virtualHosts) {
+    void deliverRdsUpdate(String rdsName, List<VirtualHost> virtualHosts) {
+      log.log(Level.INFO, "delivering rds update, current resources: " + rdsResources );
       rdsResources.get(rdsName).onChanged(new RdsUpdate(virtualHosts));
     }
 
