@@ -250,9 +250,9 @@ public class XdsServerWrapperTest {
     FilterChain filterChain = createFilterChain("filter-chain-0", createRds("rds"));
     SslContextProviderSupplier sslSupplier = filterChain.getSslContextProviderSupplier();
     xdsClient.deliverLdsUpdate(Collections.singletonList(filterChain), null);
-    xdsClient.rdsResources.get("rds").onResourceDoesNotExist("rds");
+    xdsClient.getRdsResources().get("rds").onResourceDoesNotExist("rds");
     assertThat(selectorRef.get()).isSameInstanceAs(FilterChainSelector.NO_FILTER_CHAIN);
-    assertThat(xdsClient.rdsResources).isEmpty();
+    assertThat(xdsClient.getRdsResources()).isEmpty();
     verify(mockBuilder, never()).build();
     verify(listener, times(2)).onNotServing(any(StatusException.class));
     assertThat(sslSupplier.isShutdown()).isTrue();
@@ -264,7 +264,7 @@ public class XdsServerWrapperTest {
     xdsClient.deliverLdsUpdate(Collections.singletonList(filterChain), null);
     xdsClient.deliverRdsUpdate("rds",
             Collections.singletonList(createVirtualHost("virtual-host-1")));
-    RdsResourceWatcher saveRdsWatcher = xdsClient.rdsResources.get("rds");
+    RdsResourceWatcher saveRdsWatcher = xdsClient.getRdsResources().get("rds");
     assertThat(executor.runDueTasks()).isEqualTo(1);
     verify(mockBuilder, times(1)).build();
     verify(mockServer, times(2)).start();
@@ -291,7 +291,7 @@ public class XdsServerWrapperTest {
 
     // not serving after serving
     xdsClient.ldsWatcher.onResourceDoesNotExist(ldsResource);
-    assertThat(xdsClient.rdsResources).isEmpty();
+    assertThat(xdsClient.getRdsResources()).isEmpty();
     verify(mockServer).shutdown();
     when(mockServer.isShutdown()).thenReturn(true);
     assertThat(selectorRef.get()).isSameInstanceAs(FilterChainSelector.NO_FILTER_CHAIN);

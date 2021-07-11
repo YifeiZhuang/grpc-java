@@ -204,7 +204,7 @@ public class XdsServerTestHelper {
     boolean shutdown;
     SettableFuture<String> ldsResource = SettableFuture.create();
     LdsResourceWatcher ldsWatcher;
-    Map<String, RdsResourceWatcher> rdsResources = new HashMap<>();
+    private final Map<String, RdsResourceWatcher> rdsResources = new HashMap<>();
 
     @Override
     public TlsContextManager getTlsContextManager() {
@@ -261,6 +261,10 @@ public class XdsServerTestHelper {
 
     synchronized void deliverRdsUpdate(String rdsName, List<VirtualHost> virtualHosts) {
       rdsResources.get(rdsName).onChanged(new RdsUpdate(virtualHosts));
+    }
+
+    synchronized Map<String, RdsResourceWatcher> getRdsResources() {
+      return ImmutableMap.copyOf(rdsResources);
     }
   }
 }
