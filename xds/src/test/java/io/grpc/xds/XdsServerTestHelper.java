@@ -41,8 +41,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.concurrent.CountDownLatch;
 import javax.annotation.Nullable;
 import org.mockito.ArgumentCaptor;
 
@@ -50,7 +49,6 @@ import org.mockito.ArgumentCaptor;
  * Helper methods related to {@link XdsServerBuilder} and related classes.
  */
 public class XdsServerTestHelper {
-  private static final Logger log = Logger.getLogger(XdsServerTestHelper.class.getName());
 
   private static final String SERVER_URI = "trafficdirector.googleapis.com";
   private static final String NODE_ID =
@@ -207,7 +205,8 @@ public class XdsServerTestHelper {
     boolean shutdown;
     SettableFuture<String> ldsResource = SettableFuture.create();
     LdsResourceWatcher ldsWatcher;
-    private final Map<String, RdsResourceWatcher> rdsResources = new HashMap<>();
+    CountDownLatch rdsCount = new CountDownLatch(1);
+    final Map<String, RdsResourceWatcher> rdsWatchers = new HashMap<>();
 
     @Override
     public TlsContextManager getTlsContextManager() {
@@ -234,13 +233,14 @@ public class XdsServerTestHelper {
     }
 
     @Override
-    synchronized void watchRdsResource(String resourceName, RdsResourceWatcher watcher) {
-      rdsResources.put(resourceName, watcher);
+    void watchRdsResource(String resourceName, RdsResourceWatcher watcher) {
+      rdsWatchers.put(resourceName, watcher);
+      rdsCount.countDown();
     }
 
     @Override
-    synchronized void cancelRdsResourceWatch(String resourceName, RdsResourceWatcher watcher) {
-      rdsResources.remove(resourceName);
+    void cancelRdsResourceWatch(String resourceName, RdsResourceWatcher watcher) {
+      rdsWatchers.remove(resourceName);
     }
 
     @Override
@@ -264,12 +264,7 @@ public class XdsServerTestHelper {
     }
 
     void deliverRdsUpdate(String rdsName, List<VirtualHost> virtualHosts) {
-      log.log(Level.INFO, "delivering rds update, current resources: " + rdsResources );
-      rdsResources.get(rdsName).onChanged(new RdsUpdate(virtualHosts));
-    }
-
-    synchronized Map<String, RdsResourceWatcher> getRdsResources() {
-      return ImmutableMap.copyOf(rdsResources);
+      rdsWatchers.get(rdsName).onChanged(new RdsUpdate(virtualHosts));
     }
   }
 }

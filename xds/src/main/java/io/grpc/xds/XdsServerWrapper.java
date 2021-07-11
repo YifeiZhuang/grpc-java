@@ -139,6 +139,7 @@ public final class XdsServerWrapper extends Server {
         internalStart();
       }
     });
+    syncContext.drain();
     IOException exception;
     try {
       exception = initialStartFuture.get();
@@ -360,6 +361,7 @@ public final class XdsServerWrapper extends Server {
     private DiscoveryState(String resourceName) {
       this.resourceName = checkNotNull(resourceName, "resourceName");
       xdsClient.watchLdsResource(resourceName, this);
+      logger.log(Level.INFO, "internal start watched lds " + resourceName);
     }
 
     @Override
