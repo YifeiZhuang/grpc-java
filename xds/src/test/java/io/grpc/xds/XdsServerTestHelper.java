@@ -250,12 +250,13 @@ public class XdsServerTestHelper {
       return shutdown;
     }
 
-    void deliverLdsUpdate(List<FilterChain> filterChains, FilterChain defaultFilterChain) {
+    synchronized void deliverLdsUpdate(List<FilterChain> filterChains,
+                                       FilterChain defaultFilterChain) {
       ldsWatcher.onChanged(LdsUpdate.forTcpListener(new Listener(
               "listener", "0.0.0.0:1", filterChains, defaultFilterChain)));
     }
 
-    void deliverLdsUpdate(LdsUpdate ldsUpdate) {
+    synchronized void deliverLdsUpdate(LdsUpdate ldsUpdate) {
       ldsWatcher.onChanged(ldsUpdate);
     }
 
