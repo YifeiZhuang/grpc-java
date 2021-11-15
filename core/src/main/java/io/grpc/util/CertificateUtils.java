@@ -56,7 +56,7 @@ public final class CertificateUtils {
 
   /**
    * Generates a {@link PrivateKey} from a PEM file.
-   * The key should be PKCS #8 formatted.
+   * The key should be PKCS #8 formatted. The key algorithm should be "RSA" or "EC".
    * The PEM file should contain one item in Base64 encoding, with plain-text headers and footers
    * (e.g. -----BEGIN PRIVATE KEY----- and -----END PRIVATE KEY-----).
    *
@@ -65,34 +65,29 @@ public final class CertificateUtils {
   public static PrivateKey getPrivateKey(InputStream inputStream)
       throws UnsupportedEncodingException, IOException, NoSuchAlgorithmException,
       InvalidKeySpecException {
-    InputStreamReader isr = null;
-    BufferedReader reader = null;
+    BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
+    String line;
+    while ((line = reader.readLine()) != null) {
+      if ("-----BEGIN PRIVATE KEY-----".equals(line)) {
+        break;
+      }
+    }
+    StringBuilder keyContent = new StringBuilder();
+    while ((line = reader.readLine()) != null) {
+      if ("-----END PRIVATE KEY-----".equals(line)) {
+        break;
+      }
+      keyContent.append(line);
+    }
+    byte[] decodedKeyBytes = BaseEncoding.base64().decode(keyContent.toString());
+    PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(decodedKeyBytes);
     try {
-      isr = new InputStreamReader(inputStream, "UTF-8");
-      reader = new BufferedReader(isr);
-      String line;
-      while ((line = reader.readLine()) != null) {
-        if ("-----BEGIN PRIVATE KEY-----".equals(line)) {
-          break;
-        }
-      }
-      StringBuilder keyContent = new StringBuilder();
-      while ((line = reader.readLine()) != null) {
-        if ("-----END PRIVATE KEY-----".equals(line)) {
-          break;
-        }
-        keyContent.append(line);
-      }
-      byte[] decodedKeyBytes = BaseEncoding.base64().decode(keyContent.toString());
-      KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-      PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(decodedKeyBytes);
-      return keyFactory.generatePrivate(keySpec);
-    } finally {
-      if (null != reader) {
-        reader.close();
-      }
-      if (null != isr) {
-        isr.close();
+      return KeyFactory.getInstance("RSA").generatePrivate(keySpec);
+    } catch (InvalidKeySpecException ignore) {
+      try {
+        return KeyFactory.getInstance("EC").generatePrivate(keySpec);
+      } catch (InvalidKeySpecException e) {
+        throw new InvalidKeySpecException("Neither RSA nor EC worked", e);
       }
     }
   }

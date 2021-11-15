@@ -26,6 +26,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import io.grpc.Attributes;
 import io.grpc.CallOptions;
+import io.grpc.ClientStreamTracer;
 import io.grpc.Compressor;
 import io.grpc.Deadline;
 import io.grpc.Decompressor;
@@ -58,6 +59,7 @@ import io.grpc.internal.ServerTransportListener;
 import io.grpc.internal.StatsTraceContext;
 import io.grpc.internal.StreamListener;
 import java.io.InputStream;
+import java.net.SocketAddress;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -79,7 +81,7 @@ final class InProcessTransport implements ServerTransport, ConnectionClientTrans
   private static final Logger log = Logger.getLogger(InProcessTransport.class.getName());
 
   private final InternalLogId logId;
-  private final String name;
+  private final SocketAddress address;
   private final int clientMaxInboundMetadataSize;
   private final String authority;
   private final String userAgent;
@@ -118,10 +120,10 @@ final class InProcessTransport implements ServerTransport, ConnectionClientTrans
         }
       };
 
-  private InProcessTransport(String name, int maxInboundMetadataSize, String authority,
+  private InProcessTransport(SocketAddress address, int maxInboundMetadataSize, String authority,
       String userAgent, Attributes eagAttrs,
       Optional<ServerListener> optionalServerListener, boolean includeCauseWithStatus) {
-    this.name = name;
+    this.address = address;
     this.clientMaxInboundMetadataSize = maxInboundMetadataSize;
     this.authority = authority;
     this.userAgent = GrpcUtil.getGrpcUserAgent("inprocess", userAgent);
@@ -129,18 +131,18 @@ final class InProcessTransport implements ServerTransport, ConnectionClientTrans
     this.attributes = Attributes.newBuilder()
         .set(GrpcAttributes.ATTR_SECURITY_LEVEL, SecurityLevel.PRIVACY_AND_INTEGRITY)
         .set(GrpcAttributes.ATTR_CLIENT_EAG_ATTRS, eagAttrs)
-        .set(Grpc.TRANSPORT_ATTR_REMOTE_ADDR, new InProcessSocketAddress(name))
-        .set(Grpc.TRANSPORT_ATTR_LOCAL_ADDR, new InProcessSocketAddress(name))
+        .set(Grpc.TRANSPORT_ATTR_REMOTE_ADDR, address)
+        .set(Grpc.TRANSPORT_ATTR_LOCAL_ADDR, address)
         .build();
     this.optionalServerListener = optionalServerListener;
-    logId = InternalLogId.allocate(getClass(), name);
+    logId = InternalLogId.allocate(getClass(), address.toString());
     this.includeCauseWithStatus = includeCauseWithStatus;
   }
 
   public InProcessTransport(
-      String name, int maxInboundMetadataSize, String authority, String userAgent,
+      SocketAddress address, int maxInboundMetadataSize, String authority, String userAgent,
       Attributes eagAttrs, boolean includeCauseWithStatus) {
-    this(name, maxInboundMetadataSize, authority, userAgent, eagAttrs,
+    this(address, maxInboundMetadataSize, authority, userAgent, eagAttrs,
         Optional.<ServerListener>absent(), includeCauseWithStatus);
   }
 
@@ -149,7 +151,7 @@ final class InProcessTransport implements ServerTransport, ConnectionClientTrans
       Attributes eagAttrs, ObjectPool<ScheduledExecutorService> serverSchedulerPool,
       List<ServerStreamTracer.Factory> serverStreamTracerFactories,
       ServerListener serverListener) {
-    this(name, maxInboundMetadataSize, authority, userAgent, eagAttrs,
+    this(new InProcessSocketAddress(name), maxInboundMetadataSize, authority, userAgent, eagAttrs,
         Optional.of(serverListener), false);
     this.serverMaxInboundMetadataSize = maxInboundMetadataSize;
     this.serverSchedulerPool = serverSchedulerPool;
@@ -164,7 +166,7 @@ final class InProcessTransport implements ServerTransport, ConnectionClientTrans
       serverScheduler = serverSchedulerPool.getObject();
       serverTransportListener = optionalServerListener.get().transportCreated(this);
     } else {
-      InProcessServer server = InProcessServer.findServer(name);
+      InProcessServer server = InProcessServer.findServer(address);
       if (server != null) {
         serverMaxInboundMetadataSize = server.getMaxInboundMetadataSize();
         serverSchedulerPool = server.getScheduledExecutorServicePool();
@@ -175,7 +177,7 @@ final class InProcessTransport implements ServerTransport, ConnectionClientTrans
       }
     }
     if (serverTransportListener == null) {
-      shutdownStatus = Status.UNAVAILABLE.withDescription("Could not find server: " + name);
+      shutdownStatus = Status.UNAVAILABLE.withDescription("Could not find server: " + address);
       final Status localShutdownStatus = shutdownStatus;
       return new Runnable() {
         @Override
@@ -193,8 +195,8 @@ final class InProcessTransport implements ServerTransport, ConnectionClientTrans
       public void run() {
         synchronized (InProcessTransport.this) {
           Attributes serverTransportAttrs = Attributes.newBuilder()
-              .set(Grpc.TRANSPORT_ATTR_REMOTE_ADDR, new InProcessSocketAddress(name))
-              .set(Grpc.TRANSPORT_ATTR_LOCAL_ADDR, new InProcessSocketAddress(name))
+              .set(Grpc.TRANSPORT_ATTR_REMOTE_ADDR, address)
+              .set(Grpc.TRANSPORT_ATTR_LOCAL_ADDR, address)
               .build();
           serverStreamAttributes = serverTransportListener.transportReady(serverTransportAttrs);
           clientTransportListener.transportReady();
@@ -205,10 +207,12 @@ final class InProcessTransport implements ServerTransport, ConnectionClientTrans
 
   @Override
   public synchronized ClientStream newStream(
-      final MethodDescriptor<?, ?> method, final Metadata headers, final CallOptions callOptions) {
+      MethodDescriptor<?, ?> method, Metadata headers, CallOptions callOptions,
+      ClientStreamTracer[] tracers) {
+    StatsTraceContext statsTraceContext =
+        StatsTraceContext.newClientContext(tracers, getAttributes(), headers);
     if (shutdownStatus != null) {
-      return failedClientStream(
-          StatsTraceContext.newClientContext(callOptions, attributes, headers), shutdownStatus);
+      return failedClientStream(statsTraceContext, shutdownStatus);
     }
 
     headers.put(GrpcUtil.USER_AGENT_KEY, userAgent);
@@ -226,12 +230,12 @@ final class InProcessTransport implements ServerTransport, ConnectionClientTrans
                 "Request metadata larger than %d: %d",
                 serverMaxInboundMetadataSize,
                 metadataSize));
-        return failedClientStream(
-            StatsTraceContext.newClientContext(callOptions, attributes, headers), status);
+        return failedClientStream(statsTraceContext, status);
       }
     }
 
-    return new InProcessStream(method, headers, callOptions, authority).clientStream;
+    return new InProcessStream(method, headers, callOptions, authority, statsTraceContext)
+        .clientStream;
   }
 
   private ClientStream failedClientStream(
@@ -304,7 +308,7 @@ final class InProcessTransport implements ServerTransport, ConnectionClientTrans
   public String toString() {
     return MoreObjects.toStringHelper(this)
         .add("logId", logId.getId())
-        .add("name", name)
+        .add("address", address)
         .toString();
   }
 
@@ -377,12 +381,12 @@ final class InProcessTransport implements ServerTransport, ConnectionClientTrans
 
     private InProcessStream(
         MethodDescriptor<?, ?> method, Metadata headers, CallOptions callOptions,
-        String authority) {
+        String authority , StatsTraceContext statsTraceContext) {
       this.method = checkNotNull(method, "method");
       this.headers = checkNotNull(headers, "headers");
       this.callOptions = checkNotNull(callOptions, "callOptions");
       this.authority = authority;
-      this.clientStream = new InProcessClientStream(callOptions, headers);
+      this.clientStream = new InProcessClientStream(callOptions, statsTraceContext);
       this.serverStream = new InProcessServerStream(method, headers);
     }
 
@@ -673,9 +677,10 @@ final class InProcessTransport implements ServerTransport, ConnectionClientTrans
       @GuardedBy("this")
       private int outboundSeqNo;
 
-      InProcessClientStream(CallOptions callOptions, Metadata headers) {
+      InProcessClientStream(
+          CallOptions callOptions, StatsTraceContext statsTraceContext) {
         this.callOptions = callOptions;
-        statsTraceCtx = StatsTraceContext.newClientContext(callOptions, attributes, headers);
+        statsTraceCtx = statsTraceContext;
       }
 
       private synchronized void setListener(ServerStreamListener listener) {

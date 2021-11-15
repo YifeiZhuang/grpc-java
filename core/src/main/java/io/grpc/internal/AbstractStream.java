@@ -91,9 +91,6 @@ public abstract class AbstractStream implements Stream {
 
   @Override
   public boolean isReady() {
-    if (framer().isClosed()) {
-      return false;
-    }
     return transportState().isReady();
   }
 
@@ -108,7 +105,7 @@ public abstract class AbstractStream implements Stream {
   }
 
   /**
-   * Stream state as used by the transport. This should only called from the transport thread
+   * Stream state as used by the transport. This should only be called from the transport thread
    * (except for private interactions with {@code AbstractStream}).
    */
   public abstract static class TransportState

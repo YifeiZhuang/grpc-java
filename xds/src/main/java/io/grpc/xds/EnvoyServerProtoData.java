@@ -313,8 +313,8 @@ public final class EnvoyServerProtoData {
   /**
    * Corresponds to Envoy proto message {@link io.envoyproxy.envoy.api.v2.listener.FilterChain}.
    */
-  public static final class FilterChain {
-    // Unique name for the FilterChain.
+  static final class FilterChain {
+    // possibly empty
     private final String name;
     // TODO(sanjaypujare): flatten structure by moving FilterChainMatch class members here.
     private final FilterChainMatch filterChainMatch;

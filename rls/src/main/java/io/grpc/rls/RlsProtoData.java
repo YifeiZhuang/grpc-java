@@ -20,6 +20,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
+import com.google.auto.value.AutoValue;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableList;
@@ -36,48 +37,16 @@ import javax.annotation.concurrent.Immutable;
 /** RlsProtoData is a collection of internal representation of RouteLookupService proto messages. */
 final class RlsProtoData {
 
+  private RlsProtoData() {}
+
   /** A request object sent to route lookup service. */
   @Immutable
   static final class RouteLookupRequest {
 
-    private final String server;
-
-    private final String path;
-
-    private final String targetType;
-
     private final ImmutableMap<String, String> keyMap;
 
-    RouteLookupRequest(
-        String server, String path, String targetType, Map<String, String> keyMap) {
-      this.server = checkNotNull(server, "server");
-      this.path = checkNotNull(path, "path");
-      this.targetType = checkNotNull(targetType, "targetName");
+    RouteLookupRequest(Map<String, String> keyMap) {
       this.keyMap = ImmutableMap.copyOf(checkNotNull(keyMap, "keyMap"));
-    }
-
-    /**
-     * Returns a full host name of the target server, {@literal e.g.} firestore.googleapis.com. Only
-     * set for gRPC requests; HTTP requests must use key_map explicitly.
-     */
-    String getServer() {
-      return server;
-    }
-
-    /**
-     * Returns a full path of the request, {@literal i.e.} "/service/method". Only set for gRPC
-     * requests; HTTP requests must use key_map explicitly.
-     */
-    String getPath() {
-      return path;
-    }
-
-    /**
-     * Returns the target type allows the client to specify what kind of target format it would like
-     * from RLS to allow it to find the regional server, {@literal e.g.} "grpc".
-     */
-    String getTargetType() {
-      return targetType;
     }
 
     /** Returns a map of key values extracted via key builders for the gRPC or HTTP request. */
@@ -94,23 +63,17 @@ final class RlsProtoData {
         return false;
       }
       RouteLookupRequest that = (RouteLookupRequest) o;
-      return Objects.equal(server, that.server)
-          && Objects.equal(path, that.path)
-          && Objects.equal(targetType, that.targetType)
-          && Objects.equal(keyMap, that.keyMap);
+      return Objects.equal(keyMap, that.keyMap);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hashCode(server, path, targetType, keyMap);
+      return Objects.hashCode(keyMap);
     }
 
     @Override
     public String toString() {
       return MoreObjects.toStringHelper(this)
-          .add("server", server)
-          .add("path", path)
-          .add("targetName", targetType)
           .add("keyMap", keyMap)
           .toString();
     }
@@ -180,6 +143,7 @@ final class RlsProtoData {
   static final class RouteLookupConfig {
 
     private static final long MAX_AGE_MILLIS = TimeUnit.MINUTES.toMillis(5);
+    private static final long MAX_CACHE_SIZE = 5 * 1024 * 1024;
 
     private final ImmutableList<GrpcKeyBuilder> grpcKeyBuilders;
 
@@ -233,8 +197,11 @@ final class RlsProtoData {
       this.maxAgeInMillis = Math.min(maxAgeInMillis, MAX_AGE_MILLIS);
       this.staleAgeInMillis = Math.min(staleAgeInMillis, this.maxAgeInMillis);
       checkArgument(cacheSizeBytes > 0, "cacheSize must be positive");
-      this.cacheSizeBytes = cacheSizeBytes;
+      this.cacheSizeBytes = Math.min(cacheSizeBytes, MAX_CACHE_SIZE);
       this.validTargets = ImmutableList.copyOf(checkNotNull(validTargets, "validTargets"));
+      if (defaultTarget != null && defaultTarget.isEmpty()) {
+        defaultTarget = null;
+      }
       this.defaultTarget = defaultTarget;
     }
 
@@ -300,6 +267,7 @@ final class RlsProtoData {
      * error.  Note that requests can be routed only to a subdomain of the original target,
      * {@literal e.g.} "us_east_1.cloudbigtable.googleapis.com".
      */
+    @Nullable
     String getDefaultTarget() {
       return defaultTarget;
     }
@@ -431,12 +399,19 @@ final class RlsProtoData {
     private final ImmutableList<Name> names;
 
     private final ImmutableList<NameMatcher> headers;
+    private final ExtraKeys extraKeys;
+    private final ImmutableMap<String, String> constantKeys;
 
-    public GrpcKeyBuilder(List<Name> names, List<NameMatcher> headers) {
+    /** Constructor. All args should be nonnull. Headers should head unique keys. */
+    GrpcKeyBuilder(
+        List<Name> names, List<NameMatcher> headers, ExtraKeys extraKeys,
+        Map<String, String> constantKeys) {
       checkState(names != null && !names.isEmpty(), "names cannot be empty");
       this.names = ImmutableList.copyOf(names);
       checkUniqueKey(checkNotNull(headers, "headers"));
       this.headers = ImmutableList.copyOf(headers);
+      this.extraKeys = checkNotNull(extraKeys, "extraKeys");
+      this.constantKeys = ImmutableMap.copyOf(checkNotNull(constantKeys, "constantKeys"));
     }
 
     private static void checkUniqueKey(List<NameMatcher> headers) {
@@ -464,6 +439,14 @@ final class RlsProtoData {
       return headers;
     }
 
+    ExtraKeys getExtraKeys() {
+      return extraKeys;
+    }
+
+    ImmutableMap<String, String> getConstantKeys() {
+      return constantKeys;
+    }
+
     @Override
     public boolean equals(Object o) {
       if (this == o) {
@@ -473,12 +456,14 @@ final class RlsProtoData {
         return false;
       }
       GrpcKeyBuilder that = (GrpcKeyBuilder) o;
-      return Objects.equal(names, that.names) && Objects.equal(headers, that.headers);
+      return Objects.equal(names, that.names) && Objects.equal(headers, that.headers)
+          && Objects.equal(extraKeys, that.extraKeys)
+          && Objects.equal(constantKeys, that.constantKeys);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hashCode(names, headers);
+      return Objects.hashCode(names, headers, extraKeys, constantKeys);
     }
 
     @Override
@@ -486,6 +471,8 @@ final class RlsProtoData {
       return MoreObjects.toStringHelper(this)
           .add("names", names)
           .add("headers", headers)
+          .add("extraKeys", extraKeys)
+          .add("constantKeys", constantKeys)
           .toString();
     }
 
@@ -501,10 +488,11 @@ final class RlsProtoData {
 
       private final String method;
 
-      Name(String service) {
+      public Name(String service) {
         this(service, "*");
       }
 
+      /** The primary constructor. */
       Name(String service, String method) {
         checkState(
             !checkNotNull(service, "service").isEmpty(),
@@ -546,6 +534,22 @@ final class RlsProtoData {
             .add("method", method)
             .toString();
       }
+    }
+  }
+
+  @AutoValue
+  abstract static class ExtraKeys {
+    static final ExtraKeys DEFAULT = create(null, null, null);
+
+    @Nullable abstract String host();
+
+    @Nullable abstract String service();
+
+    @Nullable abstract String method();
+
+    static ExtraKeys create(
+        @Nullable String host, @Nullable String service, @Nullable String method) {
+      return new AutoValue_RlsProtoData_ExtraKeys(host, service, method);
     }
   }
 }

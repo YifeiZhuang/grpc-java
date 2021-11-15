@@ -31,10 +31,11 @@ import io.grpc.InternalLogId;
 import io.grpc.LoadBalancer;
 import io.grpc.Metadata;
 import io.grpc.Status;
+import io.grpc.internal.ForwardingClientStreamTracer;
 import io.grpc.internal.ObjectPool;
-import io.grpc.util.ForwardingClientStreamTracer;
 import io.grpc.util.ForwardingLoadBalancerHelper;
 import io.grpc.util.ForwardingSubchannel;
+import io.grpc.xds.Bootstrapper.ServerInfo;
 import io.grpc.xds.ClusterImplLoadBalancerProvider.ClusterImplConfig;
 import io.grpc.xds.Endpoints.DropOverload;
 import io.grpc.xds.EnvoyServerProtoData.UpstreamTlsContext;
@@ -69,7 +70,8 @@ final class ClusterImplLoadBalancer extends LoadBalancer {
           || Boolean.parseBoolean(System.getenv("GRPC_XDS_EXPERIMENTAL_CIRCUIT_BREAKING"));
   @VisibleForTesting
   static boolean enableSecurity =
-      Boolean.parseBoolean(System.getenv("GRPC_XDS_EXPERIMENTAL_SECURITY_SUPPORT"));
+      Strings.isNullOrEmpty(System.getenv("GRPC_XDS_EXPERIMENTAL_SECURITY_SUPPORT"))
+          || Boolean.parseBoolean(System.getenv("GRPC_XDS_EXPERIMENTAL_SECURITY_SUPPORT"));
   private static final Attributes.Key<ClusterLocalityStats> ATTR_CLUSTER_LOCALITY_STATS =
       Attributes.Key.create("io.grpc.xds.ClusterImplLoadBalancer.clusterLocalityStats");
 
@@ -116,15 +118,12 @@ final class ClusterImplLoadBalancer extends LoadBalancer {
       cluster = config.cluster;
       edsServiceName = config.edsServiceName;
       childLbHelper = new ClusterImplLbHelper(
-          callCounterProvider.getOrCreate(config.cluster, config.edsServiceName));
+          callCounterProvider.getOrCreate(config.cluster, config.edsServiceName),
+          config.lrsServerInfo);
       childLb = config.childPolicy.getProvider().newLoadBalancer(childLbHelper);
       // Assume load report server does not change throughout cluster lifetime.
-      if (config.lrsServerName != null) {
-        if (config.lrsServerName.isEmpty()) {
-          dropStats = xdsClient.addClusterDropStats(cluster, edsServiceName);
-        } else {
-          logger.log(XdsLogLevel.WARNING, "Can only report load to the same management server");
-        }
+      if (config.lrsServerInfo != null) {
+        dropStats = xdsClient.addClusterDropStats(config.lrsServerInfo, cluster, edsServiceName);
       }
     }
     childLbHelper.updateDropPolicies(config.dropCategories);
@@ -180,9 +179,12 @@ final class ClusterImplLoadBalancer extends LoadBalancer {
     private long maxConcurrentRequests = DEFAULT_PER_CLUSTER_MAX_CONCURRENT_REQUESTS;
     @Nullable
     private SslContextProviderSupplier sslContextProviderSupplier;
+    @Nullable
+    private final ServerInfo lrsServerInfo;
 
-    private ClusterImplLbHelper(AtomicLong inFlights) {
+    private ClusterImplLbHelper(AtomicLong inFlights, @Nullable ServerInfo lrsServerInfo) {
       this.inFlights = checkNotNull(inFlights, "inFlights");
+      this.lrsServerInfo = lrsServerInfo;
     }
 
     @Override
@@ -215,8 +217,8 @@ final class ClusterImplLoadBalancer extends LoadBalancer {
       if (locality == null) {
         locality = Locality.create("", "", "");
       }
-      final ClusterLocalityStats localityStats = xdsClient.addClusterLocalityStats(
-          cluster, edsServiceName, locality);
+      final ClusterLocalityStats localityStats = lrsServerInfo == null ? null
+          : xdsClient.addClusterLocalityStats(lrsServerInfo, cluster, edsServiceName, locality);
       Attributes attrs = args.getAttributes().toBuilder().set(
           ATTR_CLUSTER_LOCALITY_STATS, localityStats).build();
       args = args.toBuilder().setAddresses(addresses).setAttributes(attrs).build();
@@ -225,7 +227,9 @@ final class ClusterImplLoadBalancer extends LoadBalancer {
       return new ForwardingSubchannel() {
         @Override
         public void shutdown() {
-          localityStats.release();
+          if (localityStats != null) {
+            localityStats.release();
+          }
           delegate().shutdown();
         }
 
@@ -329,7 +333,8 @@ final class ClusterImplLoadBalancer extends LoadBalancer {
     }
   }
 
-  private static final class CountingStreamTracerFactory extends ClientStreamTracer.Factory {
+  private static final class CountingStreamTracerFactory extends
+      ClientStreamTracer.InternalLimitedInfoFactory {
     private ClusterLocalityStats stats;
     private final AtomicLong inFlights;
     @Nullable
