@@ -8,12 +8,16 @@ plugins {
 description = 'gRPC: Census'
 
 evaluationDependsOn(project(':grpc-api').path)
+evaluationDependsOn(project(':grpc-core').path)
 
 dependencies {
     api project(':grpc-api')
     implementation libraries.guava,
             libraries.opencensus.api,
             libraries.opencensus.contrib.grpc.metrics
+    implementation ('io.opentelemetry:opentelemetry-api:1.24.0')
+    implementation ('io.opentelemetry:opentelemetry-sdk:1.24.0')
+    implementation ('io.opentelemetry:opentelemetry-exporter-logging:1.24.0')
 
     testImplementation project(':grpc-api').sourceSets.test.output,
             project(':grpc-context').sourceSets.test.output,

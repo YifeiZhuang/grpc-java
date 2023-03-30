@@ -49,6 +49,7 @@ dependencies {
     // TODO(ejona): These should be compileOnly, but that doesn't get picked up
     // for the shadow runtime
     implementation group: 'io.github.devatherock', name: 'jul-jsonformatter', version: '1.1.0'
+    implementation "io.opentelemetry:opentelemetry-opencensus-shim:1.25.0-alpha"
     implementation libraries.opencensus.impl,
             libraries.netty.tcnative,
             libraries.netty.tcnative.classes,

@@ -43,6 +43,7 @@ import io.opencensus.trace.SpanContext;
 import io.opencensus.trace.Status;
 import io.opencensus.trace.Tracer;
 import io.opencensus.trace.propagation.BinaryFormat;
+import io.opencensus.trace.samplers.Samplers;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -265,6 +266,7 @@ final class CensusTracingModule {
               "Attempt." + fullMethodName.replace('/', '.'),
               span)
           .setRecordEvents(true)
+          .setSampler(Samplers.alwaysSample())
           .startSpan();
       attemptSpan.putAttribute(
           "previous-rpc-attempts", AttributeValue.longAttributeValue(info.getPreviousAttempts()));
@@ -475,6 +477,7 @@ final class CensusTracingModule {
               generateTraceSpanName(false, method.getFullMethodName()),
               parentSpan)
           .setRecordEvents(true)
+          .setSampler(Samplers.alwaysSample())
           .startSpan();
 
       final CallAttemptsTracerFactory tracerFactory = newClientCallTracer(clientSpan, method);
