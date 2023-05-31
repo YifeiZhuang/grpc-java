@@ -19,9 +19,9 @@ dependencies {
     implementation ('io.opentelemetry:opentelemetry-sdk:1.24.0')
     implementation ('io.opentelemetry:opentelemetry-exporter-logging:1.24.0')
 
-    testImplementation project(':grpc-api').sourceSets.test.output,
-            project(':grpc-context').sourceSets.test.output,
-            project(':grpc-core').sourceSets.test.output,
+    testImplementation testFixtures(project(':grpc-api')),
+            testFixtures(project(':grpc-context')),
+            testFixtures(project(':grpc-core')),
             project(':grpc-testing'),
             libraries.opencensus.impl
 

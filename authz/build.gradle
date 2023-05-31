@@ -19,7 +19,7 @@ dependencies {
 
     testImplementation project(':grpc-testing'),
             project(':grpc-testing-proto'),
-            project(':grpc-core').sourceSets.test.output  // for FakeClock
+            testFixtures(project(':grpc-core'))
     testImplementation (libraries.guava.testlib) {
         exclude group: 'junit', module: 'junit'
     }
@@ -32,11 +32,11 @@ dependencies {
 }
 
 tasks.named("jar").configure {
-    classifier = 'original'
+    archiveClassifier = 'original'
 }
 
 tasks.named("shadowJar").configure {
-    classifier = null
+    archiveClassifier = null
     dependencies {
         exclude(dependency {true})
     }

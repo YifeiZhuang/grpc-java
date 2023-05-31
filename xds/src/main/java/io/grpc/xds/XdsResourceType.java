@@ -55,7 +55,11 @@ abstract class XdsResourceType<T extends ResourceUpdate> {
           : Boolean.parseBoolean(System.getProperty("io.grpc.xds.experimentalEnableLeastRequest"));
 
   @VisibleForTesting
-  static boolean enableWrr = getFlag("GRPC_EXPERIMENTAL_XDS_WRR_LB", false);
+  static boolean enableWrr = getFlag("GRPC_EXPERIMENTAL_XDS_WRR_LB", true);
+
+  @VisibleForTesting
+  static boolean enablePickFirst = getFlag("GRPC_EXPERIMENTAL_PICKFIRST_LB_CONFIG", false);
+
   static final String TYPE_URL_CLUSTER_CONFIG =
       "type.googleapis.com/envoy.extensions.clusters.aggregate.v3.ClusterConfig";
   static final String TYPE_URL_TYPED_STRUCT_UDPA =
