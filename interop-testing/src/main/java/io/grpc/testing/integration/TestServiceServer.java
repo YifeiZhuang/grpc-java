@@ -30,6 +30,7 @@ import io.grpc.census.InternalCensusTracingAccessor;
 import io.grpc.census.OpenTelemetryTracingModule;
 import io.grpc.internal.testing.TestUtils;
 import io.grpc.services.MetricRecorder;
+import io.grpc.testing.TlsTesting;
 import io.grpc.xds.orca.OrcaMetricReportingServerInterceptor;
 import io.grpc.xds.orca.OrcaServiceImpl;
 import java.util.concurrent.Executors;
@@ -40,8 +41,6 @@ import java.util.concurrent.TimeUnit;
 public class TestServiceServer {
   /** The main application allowing this server to be launched from the command line. */
   public static void main(String[] args) throws Exception {
-    // Let Netty use Conscrypt if it is available.
-    TestUtils.installConscryptIfAvailable();
     final TestServiceServer server = new TestServiceServer();
     server.parseArgs(args);
     if (server.useTls) {
@@ -153,7 +152,7 @@ public class TestServiceServer {
       }
     } else if (useTls) {
       serverCreds = TlsServerCredentials.create(
-          TestUtils.loadCert("server1.pem"), TestUtils.loadCert("server1.key"));
+          TlsTesting.loadCert("server1.pem"), TlsTesting.loadCert("server1.key"));
     } else {
       serverCreds = InsecureServerCredentials.create();
     }

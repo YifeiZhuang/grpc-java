@@ -30,10 +30,19 @@ final class MetricRecorderHelper {
   }
 
   /**
-   * Return true if the qps value is in the range [0, inf) and false otherwise.
+   * Return true if the cpu utilization value is in the range [0, inf) and false otherwise.
+   * Occasionally users have over 100% cpu utilization and get a runaway effect where the backend
+   * with highest qps gets more and more qps sent to it. So we allow cpu utilization > 1.0.
    */
-  static boolean isQpsValid(double qps) {
-    return qps >= 0.0;
+  static boolean isCpuUtilizationValid(double utilization) {
+    return utilization >= 0.0;
+  }
+
+  /**
+   * Return true if a rate value (such as qps or eps) is in the range [0, inf) and false otherwise.
+   */
+  static boolean isRateValid(double rate) {
+    return rate >= 0.0;
   }
 
   // Prevent instantiation.

@@ -21,7 +21,7 @@ targetCompatibility = 1.8
 
 // Feel free to delete the comment at the next line. It is just for safely
 // updating the version in our release process.
-def grpcVersion = '1.56.0-SNAPSHOT' // CURRENT_GRPC_VERSION
+def grpcVersion = '1.57.0-SNAPSHOT' // CURRENT_GRPC_VERSION
 def protobufVersion = '3.22.3'
 def protocVersion = protobufVersion
 
@@ -82,6 +82,8 @@ def createStartScripts(String mainClassName) {
     }
 }
 
+createStartScripts('io.grpc.examples.advanced.HelloJsonClient')
+createStartScripts('io.grpc.examples.advanced.HelloJsonServer')
 createStartScripts('io.grpc.examples.cancellation.CancellationClient')
 createStartScripts('io.grpc.examples.cancellation.CancellationServer')
 createStartScripts('io.grpc.examples.customloadbalance.CustomLoadBalanceClient')

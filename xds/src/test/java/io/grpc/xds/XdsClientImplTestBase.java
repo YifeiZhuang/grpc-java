@@ -121,7 +121,8 @@ import org.mockito.Captor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoRule;
 
 /**
  * Tests for {@link XdsClientImpl}.
@@ -196,6 +197,8 @@ public abstract class XdsClientImplTestBase {
 
   @Rule
   public final GrpcCleanupRule cleanupRule = new GrpcCleanupRule();
+  @Rule
+  public final MockitoRule mocks = MockitoJUnit.rule();
 
   private final FakeClock fakeClock = new FakeClock();
   protected final BlockingDeque<DiscoveryRpcCall> resourceDiscoveryCalls =
@@ -292,8 +295,6 @@ public abstract class XdsClientImplTestBase {
 
   @Before
   public void setUp() throws IOException {
-    // Init mocks.
-    MockitoAnnotations.initMocks(this);
     when(backoffPolicyProvider.get()).thenReturn(backoffPolicy1, backoffPolicy2);
     when(backoffPolicy1.nextBackoffNanos()).thenReturn(10L, 100L);
     when(backoffPolicy2.nextBackoffNanos()).thenReturn(20L, 200L);
@@ -3567,11 +3568,10 @@ public abstract class XdsClientImplTestBase {
     // Setup xdsClient to fail on stream creation
     XdsClientImpl client = createXdsClient("some.garbage");
     client.watchXdsResource(XdsListenerResource.getInstance(), LDS_RESOURCE, ldsResourceWatcher);
-    fakeClock.forwardTime(20, TimeUnit.SECONDS);
-
     verify(ldsResourceWatcher, Mockito.timeout(5000).times(1)).onError(ArgumentMatchers.any());
-    fakeClock.forwardTime(50, TimeUnit.SECONDS); // Trigger rpcRetry if appropriate
-    assertThat(fakeClock.getPendingTasks(LDS_RESOURCE_FETCH_TIMEOUT_TASK_FILTER)).isEmpty();
+    assertThat(fakeClock.numPendingTasks()).isEqualTo(1); //retry
+    assertThat(fakeClock.getPendingTasks().iterator().next().toString().contains("RpcRetryTask"))
+        .isTrue();
     client.shutdown();
   }
 

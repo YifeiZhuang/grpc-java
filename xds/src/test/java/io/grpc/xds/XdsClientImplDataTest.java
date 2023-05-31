@@ -28,6 +28,7 @@ import com.google.protobuf.Any;
 import com.google.protobuf.BoolValue;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Duration;
+import com.google.protobuf.FloatValue;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.StringValue;
@@ -175,7 +176,7 @@ public class XdsClientImplDataTest {
     originalEnableLeastRequest = XdsResourceType.enableLeastRequest;
     assertThat(originalEnableLeastRequest).isFalse();
     originalEnableWrr = XdsResourceType.enableWrr;
-    assertThat(originalEnableWrr).isFalse();
+    assertThat(originalEnableWrr).isTrue();
   }
 
   @After
@@ -1993,8 +1994,6 @@ public class XdsClientImplDataTest {
 
   @Test
   public void parseCluster_WrrLbPolicy_defaultLbConfig() throws ResourceInvalidException {
-    XdsResourceType.enableWrr = true;
-
     LoadBalancingPolicy wrrConfig =
         LoadBalancingPolicy.newBuilder().addPolicies(
                 LoadBalancingPolicy.Policy.newBuilder()
@@ -2005,6 +2004,8 @@ public class XdsClientImplDataTest {
                                 .setBlackoutPeriod(Duration.newBuilder().setSeconds(17).build())
                                 .setEnableOobLoadReport(
                                     BoolValue.newBuilder().setValue(true).build())
+                                .setErrorUtilizationPenalty(
+                                    FloatValue.newBuilder().setValue(1.75F).build())
                                 .build()))
                         .build())
                     .build())
@@ -2039,7 +2040,7 @@ public class XdsClientImplDataTest {
     assertThat(lbConfig.getPolicyName()).isEqualTo("wrr_locality_experimental");
     List<LbConfig> childConfigs = ServiceConfigUtil.unwrapLoadBalancingConfigList(
             JsonUtil.getListOfObjects(lbConfig.getRawConfigValue(), "childPolicy"));
-    assertThat(childConfigs.get(0).getPolicyName()).isEqualTo("weighted_round_robin_experimental");
+    assertThat(childConfigs.get(0).getPolicyName()).isEqualTo("weighted_round_robin");
     WeightedRoundRobinLoadBalancerConfig result = (WeightedRoundRobinLoadBalancerConfig)
         new WeightedRoundRobinLoadBalancerProvider().parseLoadBalancingPolicyConfig(
         childConfigs.get(0).getRawConfigValue()).getConfig();
@@ -2048,6 +2049,7 @@ public class XdsClientImplDataTest {
     assertThat(result.oobReportingPeriodNanos).isEqualTo(10_000_000_000L);
     assertThat(result.weightUpdatePeriodNanos).isEqualTo(1_000_000_000L);
     assertThat(result.weightExpirationPeriodNanos).isEqualTo(180_000_000_000L);
+    assertThat(result.errorUtilizationPenalty).isEqualTo(1.75F);
   }
 
   @Test
