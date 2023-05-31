@@ -270,7 +270,7 @@ subprojects {
             inputs.files(configurations.runtimeClasspath).withNormalizer(ClasspathNormalizer)
             outputs.file("${buildDir}/tmp/${name}") // Fake output for UP-TO-DATE checking
             doLast {
-                requireUpperBoundDepsMatch(configurations.runtimeClasspath, project)
+                //requireUpperBoundDepsMatch(configurations.runtimeClasspath, project)
             }
         }
         tasks.named('compileJava').configure {

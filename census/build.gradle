@@ -17,6 +17,7 @@ dependencies {
             libraries.opencensus.contrib.grpc.metrics
     implementation ('io.opentelemetry:opentelemetry-api:1.24.0')
     implementation ('io.opentelemetry:opentelemetry-sdk:1.24.0')
+    implementation 'com.google.cloud.opentelemetry:exporter-trace:0.15.0'
     implementation ('io.opentelemetry:opentelemetry-exporter-logging:1.24.0')
 
     testImplementation testFixtures(project(':grpc-api')),

@@ -3,6 +3,8 @@ package io.grpc.census;
 import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
 import static io.grpc.Metadata.BINARY_BYTE_MARSHALLER;
 
+import com.google.cloud.opentelemetry.trace.TraceConfiguration;
+import com.google.cloud.opentelemetry.trace.TraceExporter;
 import com.google.common.collect.ImmutableList;
 import io.grpc.Attributes;
 import io.grpc.CallOptions;
@@ -31,6 +33,7 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
+import java.io.IOException;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.List;
@@ -53,6 +56,12 @@ public class OpenTelemetryTracingModule {
 
   public OpenTelemetryTracingModule() {
     SpanExporter exporter = LoggingSpanExporter.create();
+    try {
+      exporter = TraceExporter.createWithConfiguration(
+          TraceConfiguration.builder().setProjectId("zivy-gke-dev").build());
+    } catch (IOException exception) {
+      log.log(Level.INFO, "Failed to create tracer exporter:" + exception);
+    }
     SdkTracerProvider sdkTracerProvider =
         SdkTracerProvider.builder()
             .addSpanProcessor(SimpleSpanProcessor.create(exporter))
