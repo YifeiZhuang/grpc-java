@@ -378,6 +378,7 @@ final class CensusTracingModule {
                   generateTraceSpanName(true, fullMethodName),
                   remoteSpan)
               .setRecordEvents(true)
+              .setSampler(Samplers.alwaysSample())
               .startSpan();
     }
 
@@ -431,6 +432,7 @@ final class CensusTracingModule {
     @Override
     public void inboundMessageRead(
         int seqNo, long optionalWireSize, long optionalUncompressedSize) {
+      logger.log(Level.INFO, "message read");
       recordAnnotation(
           span, MessageEvent.Type.RECEIVED, seqNo, true, optionalWireSize);
     }
@@ -456,6 +458,7 @@ final class CensusTracingModule {
       if (remoteSpan == SpanContext.INVALID) {
         remoteSpan = null;
       }
+      logger.log(Level.INFO, "remote span:" + remoteSpan);
       return new ServerTracer(fullMethodName, remoteSpan);
     }
   }
