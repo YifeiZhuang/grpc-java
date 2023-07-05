@@ -16,6 +16,8 @@ import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.ServerStreamTracer;
 import io.grpc.Status;
+import io.grpc.netty.shaded.io.netty.handler.codec.base64.Base64Decoder;
+import io.grpc.netty.shaded.io.netty.handler.codec.base64.Base64Encoder;
 import io.opencensus.trace.Tracing;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
@@ -184,11 +186,17 @@ public class OpenTelemetryTracingModule {
        BinarySetter<Metadata> {
      @Override
      public void set(@Nullable Metadata metadata, String key, String value) {
-       metadata.put(Metadata.Key.of(key, ASCII_STRING_MARSHALLER), value);
+       if (!key.endsWith("bin")) { // for other text map propagator
+         metadata.put(Metadata.Key.of(key, ASCII_STRING_MARSHALLER), value);
+       } else { // binary propagator c++
+         metadata.put(Metadata.Key.of(key, BINARY_BYTE_MARSHALLER), Base64.getDecoder().decode(value));
+       }
      }
 
+     // java and go
      @Override
      public void set(@Nullable Metadata metadata, String key, byte[] value) {
+       assert key.endsWith("bin");
        metadata.put(Metadata.Key.of(key, BINARY_BYTE_MARSHALLER), value);
      }
    }
@@ -212,13 +220,19 @@ public class OpenTelemetryTracingModule {
      @Override
      public String get(@Nullable Metadata carrier, String key) {
        if (carrier != null) {
+         assert !key.endsWith("bin");
          return carrier.get(Metadata.Key.of(key, ASCII_STRING_MARSHALLER));
        }
        return null;
      }
      @Override
      public byte[] getBinary(@Nullable Metadata carrier, String key) {
-       return carrier.get(Metadata.Key.of(key, BINARY_BYTE_MARSHALLER));
+       if (key.endsWith("bin")) {
+         return carrier.get(Metadata.Key.of(key, BINARY_BYTE_MARSHALLER));
+       } else {
+         String value = carrier.get(Metadata.Key.of(key, ASCII_STRING_MARSHALLER));
+         return Base64.getDecoder().decode(value);
+       }
      }
    }
 
