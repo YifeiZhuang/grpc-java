@@ -64,8 +64,6 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.auth.MoreCallCredentials;
 import io.grpc.census.InternalCensusStatsAccessor;
-import io.grpc.census.InternalCensusTracingAccessor;
-import io.grpc.census.OpenTelemetryTracingModule;
 import io.grpc.census.internal.DeprecatedCensusConstants;
 import io.grpc.internal.GrpcUtil;
 import io.grpc.internal.testing.StatsTestUtils;
@@ -345,11 +343,8 @@ public abstract class AbstractInteropTest {
     startServer(serverBuilder);
     channel = createChannel();
 
-    OpenTelemetryTracingModule ot = new OpenTelemetryTracingModule();
     blockingStub =
-        TestServiceGrpc.newBlockingStub(channel)
-            .withInterceptors(ot.getInterceptor(), InternalCensusTracingAccessor.getClientInterceptor())
-            .withInterceptors(tracerSetupInterceptor);
+        TestServiceGrpc.newBlockingStub(channel).withInterceptors(tracerSetupInterceptor);
     asyncStub = TestServiceGrpc.newStub(channel).withInterceptors(tracerSetupInterceptor);
 
     ClientInterceptor[] additionalInterceptors = getAdditionalInterceptors();

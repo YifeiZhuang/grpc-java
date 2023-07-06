@@ -19,6 +19,7 @@ import io.grpc.Status;
 import io.grpc.netty.shaded.io.netty.handler.codec.base64.Base64Decoder;
 import io.grpc.netty.shaded.io.netty.handler.codec.base64.Base64Encoder;
 import io.opencensus.trace.Tracing;
+import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.TraceFlags;
@@ -50,35 +51,23 @@ public class OpenTelemetryTracingModule {
   private Tracer tracer;
   private static final GrpcTraceBinTextMapPropagator grpcTraceBinPropagator =
       new GrpcTraceBinTextMapPropagator();
-  private final ClientInterceptor interceptor =
-      new TracingClientInterceptor(grpcTraceBinPropagator);
 
   private final ServerStreamTracer.Factory serverStreamTracerFactory =
       new ServerTracerFactory(grpcTraceBinPropagator);
 
-  public OpenTelemetryTracingModule() {
-    SpanExporter exporter = LoggingSpanExporter.create();
-    try {
-      exporter = TraceExporter.createWithConfiguration(
-          TraceConfiguration.builder().setProjectId("zivy-gke-dev").build());
-    } catch (IOException exception) {
-      log.log(Level.INFO, "Failed to create tracer exporter:" + exception);
-    }
-    SdkTracerProvider sdkTracerProvider =
-        SdkTracerProvider.builder()
-            .addSpanProcessor(SimpleSpanProcessor.create(exporter))
-            .setSampler(Sampler.alwaysOn())
-            .build();
-    OpenTelemetrySdk openTelemetrySdk =
-        OpenTelemetrySdk.builder()
-            .setTracerProvider(sdkTracerProvider)
-            .setPropagators(ContextPropagators.create(new GrpcTraceBinTextMapPropagator()))
-            .buildAndRegisterGlobal();
-    this.tracer = openTelemetrySdk.getTracer("grpc-opentelemetry-tracing");
+  private final OpenTelemetry openTelemetry;
+
+  // may provide convenient no parameter constructor for auto-config, or users can provide that.
+  public OpenTelemetryTracingModule(OpenTelemetry openTelemetry) {
+    this.openTelemetry = openTelemetry;
   }
 
-  public ClientInterceptor getInterceptor() {
-    return interceptor;
+  public ClientInterceptor getInterceptor(String scope, @Nullable String version) {
+    if (version == null) {
+      return new TracingClientInterceptor(openTelemetry.getPropagators(), openTelemetry.getTracer(scope));
+    } else {
+      return new TracingClientInterceptor(openTelemetry.getPropagators(), openTelemetry.getTracer(scope, version));
+    }
   }
 
   private static class ClientTracer extends ClientStreamTracer {
@@ -87,8 +76,8 @@ public class OpenTelemetryTracingModule {
 
     Span span;
 
-    ClientTracer(List<TextMapPropagator> propagators, Context context, Span span) {
-      this.compositePropagator = TextMapPropagator.composite(propagators);
+    ClientTracer(ContextPropagators propagators, Context context, Span span) {
+      this.compositePropagator = propagators.getTextMapPropagator();
       this.context= context;
       this.span = span;
     }
@@ -104,10 +93,12 @@ public class OpenTelemetryTracingModule {
   }
 
   public class TracingClientInterceptor implements ClientInterceptor {
-    List<TextMapPropagator> propagators;
+    ContextPropagators propagators;
+    private Tracer tracer;
 
-    public TracingClientInterceptor(TextMapPropagator... propagators) {
-      this.propagators = ImmutableList.copyOf(propagators);
+    public TracingClientInterceptor(ContextPropagators propagators, Tracer tracer) {
+      this.tracer = tracer;
+      this.propagators = propagators;
     }
     @Override
     public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> method,

@@ -26,16 +26,10 @@ import io.grpc.ServerCredentials;
 import io.grpc.ServerInterceptors;
 import io.grpc.TlsServerCredentials;
 import io.grpc.alts.AltsServerCredentials;
-import io.grpc.census.InternalCensusTracingAccessor;
-import io.grpc.census.OpenTelemetryTracingModule;
-import io.grpc.internal.testing.TestUtils;
 import io.grpc.services.MetricRecorder;
 import io.grpc.testing.TlsTesting;
 import io.grpc.xds.orca.OrcaMetricReportingServerInterceptor;
 import io.grpc.xds.orca.OrcaServiceImpl;
-import io.opencensus.exporter.trace.logging.LoggingTraceExporter;
-import io.opencensus.exporter.trace.stackdriver.StackdriverTraceConfiguration;
-import io.opencensus.exporter.trace.stackdriver.StackdriverTraceExporter;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -162,12 +156,6 @@ public class TestServiceServer {
     MetricRecorder metricRecorder = MetricRecorder.newInstance();
     BindableService orcaOobService =
         OrcaServiceImpl.createService(executor, metricRecorder, 1, TimeUnit.SECONDS);
-//    OpenTelemetryTracingModule ot = new OpenTelemetryTracingModule();
-//    StackdriverTraceExporter.createAndRegister(
-//        StackdriverTraceConfiguration.builder()
-//            .setProjectId("directpath-prod-manual-testing")
-//            .build());
-    LoggingTraceExporter.register();
     server = Grpc.newServerBuilderForPort(port, serverCreds)
         .maxInboundMessageSize(AbstractInteropTest.MAX_MESSAGE_SIZE)
         .addService(
@@ -175,8 +163,6 @@ public class TestServiceServer {
                 new TestServiceImpl(executor, metricRecorder), TestServiceImpl.interceptors()))
         .addService(orcaOobService)
         .intercept(OrcaMetricReportingServerInterceptor.create(metricRecorder))
-//        .addStreamTracerFactory(ot.getStreamTracerFactory())
-        .addStreamTracerFactory(InternalCensusTracingAccessor.getServerStreamTracerFactory())
         .build()
         .start();
   }
