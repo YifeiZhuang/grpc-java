@@ -1,8 +1,8 @@
 [versions]
-netty = '4.1.100.Final'
+netty = '4.1.110.Final'
 # Keep the following references of tcnative version in sync whenever it's updated:
 #   SECURITY.md
-nettytcnative = '2.0.61.Final'
+nettytcnative = '2.0.65.Final'
 opencensus = "0.31.1"
 # Not upgrading to 4.x as it is not yet ABI compatible.
 # https://github.com/protocolbuffers/protobuf/issues/17247
@@ -42,7 +42,6 @@ guava-testlib = "com.google.guava:guava-testlib:33.2.1-android"
 # May be different from the -android version.
 guava-jre = "com.google.guava:guava:33.2.1-jre"
 hdrhistogram = "org.hdrhistogram:HdrHistogram:2.2.2"
-j2objc-annotations = " com.google.j2objc:j2objc-annotations:3.0.0"
 jakarta-servlet-api = "jakarta.servlet:jakarta.servlet-api:5.0.0"
 javax-annotation = "org.apache.tomcat:annotations-api:6.0.53"
 javax-servlet-api = "javax.servlet:javax.servlet-api:4.0.1"
@@ -93,9 +92,7 @@ signature-android = "net.sf.androidscents.signature:android-api-level-19:4.4.2_r
 signature-java = "org.codehaus.mojo.signature:java18:1.0"
 tomcat-embed-core = "org.apache.tomcat.embed:tomcat-embed-core:10.1.25"
 tomcat-embed-core9 = "org.apache.tomcat.embed:tomcat-embed-core:9.0.89"
-# 1.4.3+ causes "unknown enum constant ElementType.MODULE" warning.
-# https://github.com/google/truth/issues/1320
-truth = "com.google.truth:truth:1.4.2"
+truth = "com.google.truth:truth:1.4.4"
 undertow-servlet22 = "io.undertow:undertow-servlet:2.2.32.Final"
 undertow-servlet = "io.undertow:undertow-servlet:2.3.14.Final"
 
